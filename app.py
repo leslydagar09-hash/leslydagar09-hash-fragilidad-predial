@@ -7,18 +7,13 @@ from streamlit_folium import st_folium
 st.set_page_config(page_title="Dashboard AVR - Riesgo Predial", layout="wide")
 
 st.title("📊 Evaluación de Riesgo por Pérdidas Económicas Directas")
-st.markdown("Sector Calucaima - Análisis Dinámico y Georreferenciado")
+st.markdown("Sector Calucaima - Análisis Dinámico, Georreferenciado y Descriptivo")
 
 # 1. Cargar y estructurar base de datos ajustando la fila de encabezados
 @st.cache_data
 def cargar_datos():
-    # Cargar Excel indicando que los encabezados están en la fila 0 (segunda fila visual)
     df_clean = pd.read_excel("Base de Datos.xlsx", header=1)
-    
-    # Eliminar filas completamente vacías al inicio si las hay
     df_clean = df_clean.dropna(how='all').reset_index(drop=True)
-    
-    # Limpiar nombres de columnas
     df_clean.columns = [str(c).strip() for c in df_clean.columns]
     return df_clean
 
@@ -58,6 +53,7 @@ else:
     df['lon_dec'] = None
 
 # 3. Sidebar y Cálculos de Riesgo
+st.sidebar.header("⚙️ Configuración del Modelo")
 costo_unitario = st.sidebar.number_input("Costo Unitario (COP/m²):", value=1650000, step=50000)
 
 col_area = [c for c in df.columns if 'AREA' in str(c).upper()]
@@ -115,10 +111,53 @@ if not df_mapa.empty:
             fill_opacity=0.8
         ).add_to(m)
 
-    st_folium(m, use_container_width=True, height=500)
+    st_folium(m, use_container_width=True, height=450)
 else:
     st.warning("No se encontraron coordenadas válidas para desplegar el mapa.")
 
-# 5. Matriz de Datos Limpia
-st.subheader("📋 Matriz de Datos")
-st.dataframe(df, use_container_width=True)
+st.markdown("---")
+
+# 5. NUEVA SECCIÓN: Análisis Descriptivo por Columna
+st.subheader("📈 Análisis Exploratorio por Columna")
+
+# Filtrar columnas internas auxiliares
+columnas_visibles = [c for c in df.columns if c not in ['lat_dec', 'lon_dec', 'AREA_NUM', 'PHI_NUM', 'V_NUM']]
+
+col_seleccionada = st.selectbox("Selecciona una columna para analizar sus datos:", columnas_visibles)
+
+if col_seleccionada:
+    serie_datos = df[col_seleccionada].dropna()
+    
+    # Intentar convertir a numérico para análisis cuantitativo
+    serie_numerica = pd.to_numeric(serie_datos, errors='coerce').dropna()
+    
+    # Si la mayoría de los datos son numéricos
+    if len(serie_numerica) > len(serie_datos) * 0.5 and len(serie_numerica) > 0:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Promedio", f"{serie_numerica.mean():,.2f}")
+        c2.metric("Mínimo", f"{serie_numerica.min():,.2f}")
+        c3.metric("Máximo", f"{serie_numerica.max():,.2f}")
+        c4.metric("Suma Total", f"{serie_numerica.sum():,.2f}")
+        
+        st.markdown(f"**Distribución de valores para:** `{col_seleccionada}`")
+        st.bar_chart(serie_numerica.value_counts().sort_index())
+        
+    else:
+        # Si es una variable cualitativa/texto
+        conteo = serie_datos.value_counts().reset_index()
+        conteo.columns = [col_seleccionada, 'Cantidad de Predios']
+        
+        col_t1, col_t2 = st.columns([1, 2])
+        
+        with col_t1:
+            st.dataframe(conteo, use_container_width=True)
+            
+        with col_t2:
+            st.markdown(f"**Frecuencia por categoría en:** `{col_seleccionada}`")
+            st.bar_chart(conteo.set_index(col_seleccionada))
+
+st.markdown("---")
+
+# 6. Matriz de Datos Limpia
+st.subheader("📋 Matriz de Datos Consolidada")
+st.dataframe(df[columnas_visibles], use_container_width=True)
