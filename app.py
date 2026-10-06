@@ -12,7 +12,7 @@ st.markdown("Sector Calucaima - Análisis Dinámico y Georreferenciado")
 # 1. Cargar base de datos
 @st.cache_data
 def cargar_datos():
-    return pd.read_excel("Base_de_Datos.xlsx")
+    return pd.read_excel("Base de Datos.xlsx")
 
 df = cargar_datos()
 
