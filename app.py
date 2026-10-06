@@ -12,25 +12,16 @@ st.markdown("Sector Calucaima - Análisis Dinámico y Georreferenciado")
 # 1. Cargar base de datos
 @st.cache_data
 def cargar_datos():
-    # Carga el archivo de Excel
+    # Leer el archivo de Excel cargado en el repositorio
     df_temp = pd.read_excel("Base de Datos.xlsx")
     
-    # Si la primera fila contiene los encabezados reales (o si hay filas vacías arriba),
-    # buscamos la fila que tenga las columnas principales
-    for i in range(len(df_temp)):
-        row_str = " ".join(df_temp.iloc[i].astype(str).values).upper()
-        if "DIRECCION" in row_str or "PREDIO" in row_str or "AREA" in row_str or "VULNERABILIDAD" in row_str:
-            df_temp.columns = df_temp.iloc[i]
-            df_temp = df_temp.iloc[i+1:].reset_index(drop=True)
-            break
-            
     # Limpiar espacios en los nombres de las columnas
     df_temp.columns = [str(col).strip() for col in df_temp.columns]
     return df_temp
 
 df = cargar_datos()
 
-# Mostrar columnas detectadas en el sidebar para depuración fácil
+# Mostrar columnas detectadas en el sidebar para fácil verificación
 st.sidebar.markdown("### 🔍 Columnas Detectadas")
 st.sidebar.json(list(df.columns))
 
@@ -64,7 +55,7 @@ def dms_a_decimal(coord_str, es_longitud=False):
     except ValueError:
         return None
 
-# Identificar columnas de Latitud y Longitud dinámicamente
+# Identificar columnas de Latitud y Longitud
 col_lat = None
 col_lon = None
 
@@ -95,7 +86,7 @@ c_area = col_area[0] if col_area else df.columns[0]
 c_phi = col_phi[0] if col_phi else df.columns[0]
 c_v = col_v[0] if col_v else df.columns[0]
 
-# Convertir a valores numéricos
+# Convertir a valores numéricos de forma segura
 df['AREA_NUM'] = pd.to_numeric(df[c_area], errors='coerce')
 df['PHI_NUM'] = pd.to_numeric(df[c_phi], errors='coerce')
 df['V_NUM'] = pd.to_numeric(df[c_v], errors='coerce')
@@ -147,7 +138,7 @@ if not df_mapa.empty:
 
     st_folium(m, use_container_width=True, height=500)
 else:
-    st.warning("No se encontraron coordenadas válidas para desplegar el mapa. Revisa los nombres de las columnas en la barra lateral.")
+    st.warning("No se encontraron coordenadas válidas para desplegar el mapa.")
 
 # 5. Tabla Consolidada
 st.subheader("📋 Matriz de Datos")
