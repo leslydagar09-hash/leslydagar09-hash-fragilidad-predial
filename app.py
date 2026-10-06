@@ -9,7 +9,7 @@ st.set_page_config(page_title="Dashboard AVR - Riesgo Predial", layout="wide")
 st.title("📊 Evaluación de Riesgo por Pérdidas Económicas Directas")
 st.markdown("Sector Calucaima - Análisis Dinámico, Georreferenciado y Descriptivo")
 
-# 1. Cargar base de datos leyendo la Fila 0 como encabezados reales
+# 1. Cargar base de datos y renombrar columnas duplicadas
 @st.cache_data
 def cargar_datos():
     df_raw = pd.read_excel("Base de Datos.xlsx")
@@ -28,7 +28,6 @@ def cargar_datos():
             if pd.notna(val) and str(val).strip() != '' and not str(val).startswith('Unnamed'):
                 nuevos_encabezados.append(str(val).strip())
             else:
-                # Si falta el nombre en la fila de abajo, tomar el encabezado superior de la fila 0
                 val_sup = df_raw.columns[i]
                 if pd.notna(val_sup) and not str(val_sup).startswith('Unnamed'):
                     nuevos_encabezados.append(str(val_sup).strip())
@@ -41,8 +40,15 @@ def cargar_datos():
         df_clean = df_raw.copy()
         df_clean.columns = [str(c).strip() for c in df_clean.columns]
         
-    # Filtrar columnas auxiliares 'Unnamed' residuales
+    # Eliminar columnas sin nombre / Unnamed residuales
     df_clean = df_clean.loc[:, ~df_clean.columns.str.startswith('Unnamed')]
+    
+    # RESOLVER COLUMNAS DUPLICADAS: Asigna subíndices únicos (ej: Col, Col.1, Col.2)
+    cols = pd.Series(df_clean.columns)
+    for dup in cols[cols.duplicated()].unique():
+        cols[cols == dup] = [f"{dup}.{i}" if i != 0 else dup for i in range(sum(cols == dup))]
+    df_clean.columns = cols
+    
     return df_clean
 
 df = cargar_datos()
@@ -156,7 +162,7 @@ else:
 
 st.markdown("---")
 
-# 5. ANÁLISIS EXPLORATORIO POR COLUMNA (SISTEMA ROBUSTO)
+# 5. ANÁLISIS EXPLORATORIO POR COLUMNA
 st.subheader("📈 Análisis Exploratorio por Columna")
 
 columnas_visibles = [c for c in df.columns if c not in ['lat_dec', 'lon_dec', 'AREA_NUM', 'PHI_NUM', 'V_NUM', 'Exposicion_E', 'Perdida_Economica']]
@@ -167,7 +173,6 @@ if col_seleccionada:
     serie_datos = df[col_seleccionada].dropna()
     serie_numerica = pd.to_numeric(serie_datos, errors='coerce').dropna()
     
-    # Si la variable es numérica
     if len(serie_numerica) > len(serie_datos) * 0.5 and len(serie_numerica) > 0:
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Promedio", f"{serie_numerica.mean():,.2f}")
@@ -180,7 +185,6 @@ if col_seleccionada:
         df_chart.columns = ['Valor', 'Cantidad']
         st.bar_chart(df_chart.set_index('Valor'))
     else:
-        # Si la variable es categórica/texto
         conteo = serie_datos.value_counts().reset_index()
         conteo.columns = [col_seleccionada, 'Cantidad de Predios']
         
