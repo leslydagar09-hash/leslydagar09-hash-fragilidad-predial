@@ -9,23 +9,17 @@ st.set_page_config(page_title="Dashboard AVR - Riesgo Predial", layout="wide")
 st.title("📊 Evaluación de Riesgo por Pérdidas Económicas Directas")
 st.markdown("Sector Calucaima - Análisis Dinámico y Georreferenciado")
 
-# 1. Cargar y estructurar base de datos desde la Fila 0
+# 1. Cargar y estructurar base de datos ajustando la fila de encabezados
 @st.cache_data
 def cargar_datos():
-    df_raw = pd.read_excel("Base de Datos.xlsx")
+    # Cargar Excel indicando que los encabezados están en la fila 0 (segunda fila visual)
+    df_clean = pd.read_excel("Base de Datos.xlsx", header=1)
     
-    # Tomar los nombres de columnas de la fila 0
-    nuevas_columnas = df_raw.iloc[0].values
+    # Eliminar filas completamente vacías al inicio si las hay
+    df_clean = df_clean.dropna(how='all').reset_index(drop=True)
     
-    # Si alguna celda de la fila 0 es nula, conservar la columna de arriba
-    for i, col in enumerate(nuevas_columnas):
-        if pd.isna(col) or str(col).strip() == '':
-            nuevas_columnas[i] = str(df_raw.columns[i]).strip()
-        else:
-            nuevas_columnas[i] = str(col).strip()
-            
-    df_clean = df_raw.iloc[2:].copy().reset_index(drop=True)
-    df_clean.columns = nuevas_columnas
+    # Limpiar nombres de columnas
+    df_clean.columns = [str(c).strip() for c in df_clean.columns]
     return df_clean
 
 df = cargar_datos()
@@ -52,10 +46,13 @@ def dms_a_decimal(coord_str, es_longitud=False):
         return decimal
     return None
 
-# Convertir coordenadas
-if 'LATITUD' in df.columns and 'LONGITUD' in df.columns:
-    df['lat_dec'] = df['LATITUD'].apply(lambda x: dms_a_decimal(str(x), es_longitud=False))
-    df['lon_dec'] = df['LONGITUD'].apply(lambda x: dms_a_decimal(str(x), es_longitud=True))
+# Buscar columnas de latitud y longitud
+col_lat = [c for c in df.columns if 'LATITUD' in c.upper()]
+col_lon = [c for c in df.columns if 'LONGITUD' in c.upper()]
+
+if col_lat and col_lon:
+    df['lat_dec'] = df[col_lat[0]].apply(lambda x: dms_a_decimal(str(x), es_longitud=False))
+    df['lon_dec'] = df[col_lon[0]].apply(lambda x: dms_a_decimal(str(x), es_longitud=True))
 else:
     df['lat_dec'] = None
     df['lon_dec'] = None
