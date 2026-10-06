@@ -38,9 +38,16 @@ def dms_a_decimal(coord_str, es_longitud=False):
         return decimal
     return None
 
+# Normalizar los nombres de las columnas para evitar errores de espacios o mayúsculas/minúsculas
+df.columns = df.columns.str.strip().str.upper()
+
+# Buscar la columna de latitud y longitud sin importar variaciones leves de nombre
+col_lat = [c for c in df.columns if 'LAT' in c][0]
+col_lon = [c for c in df.columns if 'LON' in c][0]
+
 # Convertir coordenadas
-df['lat_dec'] = df['LATITUD'].apply(lambda x: dms_a_decimal(str(x), es_longitud=False))
-df['lon_dec'] = df['LONGITUD'].apply(lambda x: dms_a_decimal(str(x), es_longitud=True))
+df['lat_dec'] = df[col_lat].apply(lambda x: dms_a_decimal(str(x), es_longitud=False))
+df['lon_dec'] = df[col_lon].apply(lambda x: dms_a_decimal(str(x), es_longitud=True))
 
 # 3. Sidebar y Cálculos
 costo_unitario = st.sidebar.number_input("Costo Unitario (COP/m²):", value=1650000, step=50000)
